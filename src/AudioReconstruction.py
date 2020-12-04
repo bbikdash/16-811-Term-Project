@@ -9,15 +9,15 @@ Due: December 2020
 import numpy as np
 import matplotlib.pyplot as plt
 from scipy.io import wavfile
-import scipy
-import Interpolation
-import Comparison
+from Interpolation import Interpolation
+from Comparison import Comparison
 
 # These represent the bounds
 MAX_CLIP = 32767
 MIN_CLIP = -32768
 THRESHOLD = 5900  # originally 3
 CLIP = MAX_CLIP - THRESHOLD
+SCALE = 0.85
 
 def detectClipping(data):
     clipped_region = []  # List containing clipped regions (start and end indices)
@@ -33,7 +33,7 @@ def detectClipping(data):
             inMiddle = True
         elif abs(data[i]) < CLIP and inMiddle == True:
             # ASSERT: Found the end of a clipped region
-            bounds[1] = i - 1
+            bounds[1] = i
             inMiddle = False
 
             # Store the clipped region in the list
@@ -52,49 +52,10 @@ def interpolate(regions, red, numpoints=6):
 
         cs = Interpolation.cubic_spline_scipy(indices, data, numpoints)
 
-        for i in range(indices[0], indices[1] + 1):
+        for i in range(indices[0], indices[1]):
             data[i] = cs(i)
 
     return data
-
-
-
-def plot_single_region(start, end, distortedAudio, originalAudio, sampleRate, interp_points=6):
-    # Find regions of clipping
-    clippedRegLeft = detectClipping(distortedAudio[start:end, 0])
-    # Perform global amplitude reduction
-    reducedAudio = np.round(distortedAudio[start:end, 0] * SCALE)
-    print("clippedRegLeft: {}".format(clippedRegLeft))
-
-    # http://fourier.eng.hmc.edu/e176/lectures/ch7/node6.html
-
-    # Perform cubic spline interpolation for every clipped region
-    cleanedAudio = np.zeros(reducedAudio.shape)
-    cleanedAudio = interpolate(clippedRegLeft, reducedAudio, interp_points)
-
-    cleanedAudio = np.round(cleanedAudio)
-    cleanedAudio = cleanedAudio.astype('int16')
-
-    # Plotting
-    length = distortedAudio.shape[0] / sampleRate
-    time = np.linspace(0., length, distortedAudio.shape[0])
-    plt.figure(1)
-    plt.title('Original Audio and Distorted Audio in a Single Clipped Region')
-    plt.plot(time[start:end], originalAudio[start:end, 0], 'b', label='Original (Left Channel)')
-    plt.plot(time[start:end], distortedAudio[start:end, 0], 'r', label='Distorted (Left channel)')
-    # plt.plot(time[1315:1325], distortedAudio[1315:1325,1], label="Right channel")
-    plt.legend()
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-
-    plt.figure(2)
-    plt.title('Distorted Audio and Cleaned Audio in a Single Clipped Region')
-    plt.plot(time[start:end], reducedAudio, 'r-+', label="Reduced/Distorted (Right Channel)")
-    plt.plot(time[start:end], cleanedAudio, 'g-*', label="Cleaned (Right Channel)")
-    plt.legend()
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-    plt.show()
 
 
 if __name__ == "__main__":
@@ -106,12 +67,12 @@ if __name__ == "__main__":
     # Essential ------------------------------------------------------------------------------------------
     # Load the audio as a waveform `y`
     # Store the sampling rate as `sr
-    filename = 'test_audio/Trumpet_Distorted1.wav'
+    filename = '../test_audio/Trumpet_Distorted1.wav'
     sampleRate, distortedAudio = wavfile.read(filename)
     distortedAudio = distortedAudio.astype('int32')
     # print("distortedAudio.shape: {}".format(distortedAudio.shape))
 
-    filename = 'test_audio/Trumpet_Original.wav'
+    filename = '../test_audio/Trumpet_Original.wav'
     sampleRate, originalAudio = wavfile.read(filename)
     originalAudio = originalAudio.astype('int32')
     # One of the first clipped regions in the distorted trumpet occurs at indices 1317 to 1320
@@ -135,7 +96,6 @@ if __name__ == "__main__":
     distortedAudio_score = Comparison.hist_intersection(distortedAudio_hist[:,0], originalAudio_hist[:,0])
     print("Percentage similar (Distorted Audio / Original Audio): {} %".format(round(100 * distortedAudio_score / ref_score, 4)))
 
-
     # Find regions of clipping
     clippedRegLeft = detectClipping(distortedAudio[:, 0])
     clippedRegRight = detectClipping(distortedAudio[:, 1])
@@ -156,62 +116,15 @@ if __name__ == "__main__":
     # We want the following ratio to be as close to 1.0 as possible:
     print("Percentage similar (Cleaned Audio / Original Audio): {} %".format(round(100 * cleanedAudio_score / ref_score, 4)))
 
-
     # Intelligent Scaling of Cleaned Audio
     reducedCleanAudio = Comparison.intelligent_reduction(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
-    reducedCleanAudio = reducedCleanAudio.astype('int16')
+    reducedCleanAudio = reducedCleanAudio.astype('int32')
 
     # Average max interpolation error
     avg_max_error = Comparison.avg_max_interp_error(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
     print("Average max interpolation error: {}".format(avg_max_error))
 
     # Produce a new wavfile. IMPORTANT: must be of type 'int16'
-    wavfile.write('Trumpet_Cleaned_reduced.wav', sampleRate, reducedCleanAudio)
+    # wavfile.write('Trumpet_Cleaned_reduced.wav', sampleRate, reducedCleanAudio)
 
-    #%% Plotting
-    length = originalAudio.shape[0] / sampleRate
-    time = np.linspace(0., length, originalAudio.shape[0])
-    plt.figure(1)
-    plt.title('Distorted Audio')
-    # plt.plot(time, originalAudio[:, 0], label="Left channel")
-    # plt.plot(time, originalAudio[:, 1], label="Right channel")
-    plt.plot(time, distortedAudio[:, 0], 'r', label="Left channel")
-    # plt.plot(time, distortedAudio[:, 1], label="Right channel")
-    plt.legend()
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-    #
-    # plt.figure(2)
-    # plt.plot(time, reducedAudio[:, 0], label="Left channel")
-    # plt.plot(time, reducedAudio[:, 1], label="Right channel")
-    # plt.plot(time, cleanedAudio[:, 0], label="Left channel")
-    # plt.plot(time, cleanedAudio[:, 1], label="Right channel")
-    #
-    # fig, axs = plt.subplots(2)
-    # fig.suptitle('Distorted Audio')
-    # axs[0].plot(time, distortedAudio[:, 0], label="Left channel")
-    # axs[0].plot(time, distortedAudio[:, 1], label="Right channel")
-    #
-    # axs[1].plot(time, cleanedAudio[:, 0], label="Left channel")
-    # axs[1].plot(time, cleanedAudio[:, 1], label="Right channel")
-    #
-    # plt.legend()
-    # plt.xlabel("Time [s]")
-    # plt.ylabel("Amplitude")
-
-    fig, axs = plt.subplots(3, sharex=True)
-    fig.suptitle("Original vs Clean")
-    axs[0].plot(time, originalAudio[:, 0], color='r')
-    axs[0].grid()
-    axs[1].plot(time, reducedAudio[:, 0], color='b')
-    axs[1].grid()
-    axs[2].plot(time, reducedCleanAudio[:, 0], color='c')
-    axs[2].grid()
-    plt.xlabel("Time [s]")
-    plt.ylabel("Amplitude")
-
-    plt.show()
-
-    # Single Clipped Region -----------------------------------------------------------
-    plot_single_region(1598, 1610, distortedAudio, originalAudio, sampleRate, 6)
-    # ---------------------------------------------------------------------------------
+    
