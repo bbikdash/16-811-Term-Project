@@ -50,22 +50,17 @@ def interpolate(regions, red, numpoints=6):
     num_regions = len(regions)
     for i in range(0, num_regions):
         indices = regions[i]
-        
+
         cs = Interpolation.cubic_spline_scipy(indices, data, numpoints)
         # cs = Interpolation.cubic_spline(indices, data, numpoints)
-        
+
         for i in range(indices[0], indices[1]):
             data[i] = cs(i)
 
     return data
 
 
-def reconstruct(original_filename, distorted):
-    # TODO
-    pass
-
-
-if __name__ == "__main__":
+def reconstruct(original_filename, distorted_filename):
     """
     For all two channel matrices, we will adopt the convention:
         - left channel: audio[:,0]
@@ -74,38 +69,39 @@ if __name__ == "__main__":
     # Essential ------------------------------------------------------------------------------------------
     # Load the audio as a waveform `y`
     # Store the sampling rate as `sr
-    filename = '../test_audio/Trumpet_Distorted1.wav'
-    sampleRate, distortedAudio = wavfile.read(filename)
-    distortedAudio = distortedAudio.astype('int32')
-    # print("distortedAudio.shape: {}".format(distortedAudio.shape))
-
-    filename = '../test_audio/Trumpet_Original.wav'
-    sampleRate, originalAudio = wavfile.read(filename)
+    sr, originalAudio = wavfile.read(original_filename)
     originalAudio = originalAudio.astype('int32')
-    # One of the first clipped regions in the distorted trumpet occurs at indices 1317 to 1320
-    # ----------------------------------------------------------------------------------------------------
+
+    sr, distortedAudio = wavfile.read(distorted_filename)
+    distortedAudio = distortedAudio.astype('int32')
 
 
     # Comparing Cleaning Quality through FFT -----------------------------------------------------------
     # FFT histograms
-    originalAudio_hist = Comparison.freq_hist(originalAudio, sampleRate)
-    # Comparison.plot_hist(originalAudio_hist, sampleRate, "Original Audio", 'b')
+    originalAudio_hist = Comparison.freq_hist(originalAudio, sr)
     ref_score = Comparison.hist_intersection(originalAudio_hist[:,0], originalAudio_hist[:,0])
 
     reducedOriginalAudio = np.round(originalAudio * SCALE)
-    reducedOriginalAudio_hist = Comparison.freq_hist(reducedOriginalAudio, sampleRate)
-    Comparison.plot_hist(reducedOriginalAudio_hist, sampleRate, "Reduced Original Audio", 'r')
+    reducedOriginalAudio_hist = Comparison.freq_hist(reducedOriginalAudio, sr)
+    Comparison.plot_hist(reducedOriginalAudio_hist, sr, "Reduced Original Audio", 'r')
     reducedAudio_score = Comparison.hist_intersection(reducedOriginalAudio_hist[:,0], originalAudio_hist[:,0])
     print("Percentage similar (Reduced Audio / Original Audio): {} %".format(round(100 * reducedAudio_score / ref_score, 4)))
 
-    distortedAudio_hist = Comparison.freq_hist(distortedAudio, sampleRate)
-    Comparison.plot_hist(distortedAudio_hist, sampleRate, "Distorted Audio", 'g')
+    distortedAudio_hist = Comparison.freq_hist(distortedAudio, sr)
+    Comparison.plot_hist(distortedAudio_hist, sr, "Distorted Audio", 'g')
     distortedAudio_score = Comparison.hist_intersection(distortedAudio_hist[:,0], originalAudio_hist[:,0])
     print("Percentage similar (Distorted Audio / Original Audio): {} %".format(round(100 * distortedAudio_score / ref_score, 4)))
 
     # Find regions of clipping
     clippedRegLeft = detectClipping(distortedAudio[:, 0])
     clippedRegRight = detectClipping(distortedAudio[:, 1])
+
+    perc_dist_left = Comparison.percentDistorted(clippedRegLeft, len(distortedAudio))
+    perc_dist_right = Comparison.percentDistorted(clippedRegRight, len(distortedAudio))
+
+    print('%.2f%% of the left audio channel is distorted.' % perc_dist_left)
+    print('%.2f%% of the right audio channel is distorted.' % perc_dist_right)
+
 
     # Perform global amplitude reduction
     # Reduce by (1-SCALE)%
@@ -117,8 +113,8 @@ if __name__ == "__main__":
     cleanedAudio[:, 1] = interpolate(clippedRegRight, reducedAudio[:, 1])
 
     # FFT of the cleaned audio
-    cleanedAudio_hist = Comparison.freq_hist(cleanedAudio, sampleRate)
-    Comparison.plot_hist(cleanedAudio_hist, sampleRate, "Cleaned Audio", 'c')
+    cleanedAudio_hist = Comparison.freq_hist(cleanedAudio, sr)
+    Comparison.plot_hist(cleanedAudio_hist, sr, "Cleaned Audio", 'c')
     cleanedAudio_score = Comparison.hist_intersection(cleanedAudio_hist[:,0], originalAudio_hist[:,0])
     # We want the following ratio to be as close to 1.0 as possible:
     print("Percentage similar (Cleaned Audio / Original Audio): {} %".format(round(100 * cleanedAudio_score / ref_score, 4)))
@@ -131,14 +127,24 @@ if __name__ == "__main__":
     avg_max_error = Comparison.avg_max_interp_error(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
     # print("Average max interpolation error: {}".format(avg_max_error))
     print("Average max interpolation error: {} dB".format(avg_max_error))
-    
-    # Single Clipped Region -----------------------------------------------------------
-    Plotting.plot_single_region(1598, 1610, distortedAudio, originalAudio, reducedAudio, cleanedAudio, sampleRate, 6)
-    # ---------------------------------------------------------------------------------
-    
-    Plotting.generalPlot(originalAudio, distortedAudio, sampleRate)
-    Plotting.createSubplot(originalAudio, reducedAudio, reducedCleanAudio, sampleRate)
-    # Produce a new wavfile. IMPORTANT: must be of type 'int16'
-    # wavfile.write('Trumpet_Cleaned_reduced.wav', sampleRate, reducedCleanAudio)
 
-    
+    # Single Clipped Region for Trumpet Audio -----------------------------------------
+    # Plotting.plot_single_region(1598, 1610, distortedAudio, originalAudio, reducedAudio, cleanedAudio, sampleRate, 6)
+    # ---------------------------------------------------------------------------------
+
+    Plotting.generalPlot(originalAudio, distortedAudio, sr)
+    Plotting.createSubplot(originalAudio, reducedAudio, reducedCleanAudio, sr)
+
+    return cleanedAudio, sr
+
+
+def exportAudio(name, sampleRate, cleanedAudio):
+    # Produce a new wavfile. IMPORTANT: must be of type 'int16'
+    wavfile.write(name, sampleRate, cleanedAudio)
+
+
+
+if __name__ == "__main__":
+
+    clean, sr = reconstruct('../test_audio/Trumpet_Original.wav',
+                            '../test_audio/Trumpet_Distorted1.wav')

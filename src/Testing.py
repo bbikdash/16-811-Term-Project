@@ -7,16 +7,32 @@ Due: December 2020
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from scipy.io import wavfile
-from Interpolation import Interpolation
-from Comparison import Comparison
-from Plotting import Plotting
+import AudioReconstruction
 
 
-files = [file1, file2, file3]
-for f in files:
-    pass
+files = {'../test_audio/Trumpet_Original.wav':
+         ['../test_audio/Trumpet_Distorted1.wav',
+          '../test_audio/Trumpet_Distorted2.wav',
+          '../test_audio/Trumpet_Distorted3.wav',
+          '../test_audio/Trumpet_Distorted4.wav'],
+         '../test_audio/Brahms_Original.wav':
+         ['../test_audio/Brahms_Distorted1.wav',
+          '../test_audio/Brahms_Distorted2.wav',
+          '../test_audio/Brahms_Distorted3.wav',
+          '../test_audio/Brahms_Distorted4.wav'],
+         '../test_audio/_Original.wav':
+         ['../test_audio/_Distorted1.wav',
+          '../test_audio/_Distorted2.wav',
+          '../test_audio/_Distorted3.wav',
+          '../test_audio/_Distorted4.wav']}
+
+
+
+for o in files.keys():
+    for d in files[o]:
+
+        AudioReconstruction.reconstruct(o, d)
+
 
 
 
