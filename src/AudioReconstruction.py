@@ -118,7 +118,7 @@ if __name__ == "__main__":
 
     # Intelligent Scaling of Cleaned Audio
     reducedCleanAudio = Comparison.intelligent_reduction(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
-    reducedCleanAudio = reducedCleanAudio.astype('int32')
+    reducedCleanAudio = reducedCleanAudio.astype('int16')
 
     # Average max interpolation error
     avg_max_error = Comparison.avg_max_interp_error(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)

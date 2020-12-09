@@ -18,6 +18,11 @@ class Comparison:
         in the same two channel format as the input audio matrix.
         Normalizes the FFT by dividing all values by the peak value in the
         frequency space (for that particular audio channel).
+        :param audio: The audio waveform matrix of size (n,2)
+        :param sampleRate: The sample rate returned by scipy.io.wavfile.read()
+        :return hist: A normalized (peak value is 1) two channel histogram matrix of
+            size (m,2). hist[:,0] corresponds to audio[:,0] and
+            hist[:,1] corresponds to audio[:,1].
         """
         n = len(audio)
         T = 1/sampleRate
@@ -33,8 +38,17 @@ class Comparison:
         hist = np.stack((yf_left, yf_right), axis=1)
         return hist
 
+
     @staticmethod
     def plot_hist(hist, sampleRate, title, color):
+        """
+        Plots the two channels of the input histogram hist.
+        :param hist: The normalized input histogram of size (m,2)
+        :param sampleRate: The sample rate returned by scipy.io.wavfile.read()
+        :param title: The title of the plot. A string.
+        :param color: The color to plot. Usually a char. Check matplotlib documentation.
+        :return: None.
+        """
         n = len(hist)
         T = 1/sampleRate
         xf = np.linspace(0.0, 1.0/(2.0*T), n)
@@ -52,19 +66,37 @@ class Comparison:
         plt.ylabel("Magnitude")
         plt.show()
 
+
     @staticmethod
     def hist_intersection(hist1, hist2):
         """
         Given two histograms, gives the intersection score. Higher is better.
         This type of comparison is volume invariant. Meaning, our scale
         variable doesn't affect the histogram comparison.
+        :param hist1: A single channel of a histogram. size (m,1).
+        :param hist2: A single channel of a histogram. size (m,1).
+        :return sim: The similarity score.
         """
         sim = np.sum(np.minimum(hist1, hist2))
         # print(sim)
         return sim
 
+
     @staticmethod
     def intelligent_reduction(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight):
+        """
+        Using clippedRegLeft and/or clippedRegRight, finds the biggest region of the waveform
+        cleanedAudio that had no clipped values, stores this as a range, then finds the
+        peak value of this range in both cleanedAudio and originalAudio in order to form a scaling
+        ratio such that when cleanedAudio is multiplied by this ratio it will be of approximately the
+        same magnitude as originalAudio.
+        TODO: currently only does this for the left channel.
+        :param cleanedAudio:  The reconstructed audio matrix  of size (n,2).
+        :param originalAudio: The original audio that corresponds to the cleanedAudio. Size (n,2).
+        :param clippedRegLeft: The list of clipped regions of the left channel of cleanedAudio.
+        :param clippedRegRight: The list of clipped regions of the right channel of cleanedAudio.
+        :return reduced_cleanedAudio: The scaled version of cleanedAudio.
+        """
         maxbins, _ = cleanedAudio.shape
         good_region_size = 10000
         regionbound_start = None
@@ -93,8 +125,9 @@ class Comparison:
         scale = originalAudio_portion/cleanedAudio_portion
 
         # print(scale)
+        reduced_cleanedAudio = np.round(cleanedAudio * scale)
 
-        return np.round(cleanedAudio * scale)
+        return reduced_cleanedAudio
 
 
     @staticmethod
@@ -102,7 +135,14 @@ class Comparison:
         """
         Calculates the average maximum interpolation error over the entire audio waveform. Compares each region
         timestamped in clippedRegLeft to the same timestamp in originalAudio by first scaling the cleanedAudio portion
-        to be the same maximum magnitude as originalAudio, and then takes the absolute difference.
+        to be the same maximum magnitude as originalAudio, and then takes the absolute difference. Averages the
+        max interpolation errors over the number of clipped regions (length of clippedRegLeft and/or clippedRegRight).
+        TODO: Currently only does this for the left channel.
+        :param cleanedAudio:  The reconstructed audio matrix  of size (n,2).
+        :param originalAudio: The original audio that corresponds to the cleanedAudio. Size (n,2).
+        :param clippedRegLeft: The list of clipped regions of the left channel of cleanedAudio.
+        :param clippedRegRight: The list of clipped regions of the right channel of cleanedAudio.
+        :return avg_max_error: The average maximum interpolation error.
         """
         N = len(clippedRegLeft)
         avg_max_error = 0
@@ -131,5 +171,7 @@ class Comparison:
             #
             # i += 1
 
-        return avg_max_error / N
+        avg_max_error = avg_max_error / N
+
+        return avg_max_error
 

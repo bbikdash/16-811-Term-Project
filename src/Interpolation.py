@@ -25,6 +25,7 @@ class Interpolation:
 
         return CubicSpline(x, y)
 
+
     @staticmethod
     def cubic_spline(indices, data):
         """
