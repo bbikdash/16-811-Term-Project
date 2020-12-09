@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 from scipy.io import wavfile
 from Interpolation import Interpolation
 from Comparison import Comparison
+from Plotting import Plotting
 
 # These represent the bounds
 MAX_CLIP = 32767
@@ -49,13 +50,19 @@ def interpolate(regions, red, numpoints=6):
     num_regions = len(regions)
     for i in range(0, num_regions):
         indices = regions[i]
-
+        
         cs = Interpolation.cubic_spline_scipy(indices, data, numpoints)
-
+        # cs = Interpolation.cubic_spline(indices, data, numpoints)
+        
         for i in range(indices[0], indices[1]):
             data[i] = cs(i)
 
     return data
+
+
+def reconstruct(original_filename, distorted):
+    # TODO
+    pass
 
 
 if __name__ == "__main__":
@@ -118,12 +125,19 @@ if __name__ == "__main__":
 
     # Intelligent Scaling of Cleaned Audio
     reducedCleanAudio = Comparison.intelligent_reduction(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
-    reducedCleanAudio = reducedCleanAudio.astype('int16')
+    reducedCleanAudio = reducedCleanAudio.astype('int16')   # Use 16 bit signed int when writing to wav file
 
     # Average max interpolation error
     avg_max_error = Comparison.avg_max_interp_error(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
-    print("Average max interpolation error: {}".format(avg_max_error))
-
+    # print("Average max interpolation error: {}".format(avg_max_error))
+    print("Average max interpolation error: {} dB".format(avg_max_error))
+    
+    # Single Clipped Region -----------------------------------------------------------
+    Plotting.plot_single_region(1598, 1610, distortedAudio, originalAudio, reducedAudio, cleanedAudio, sampleRate, 6)
+    # ---------------------------------------------------------------------------------
+    
+    Plotting.generalPlot(originalAudio, distortedAudio, sampleRate)
+    Plotting.createSubplot(originalAudio, reducedAudio, reducedCleanAudio, sampleRate)
     # Produce a new wavfile. IMPORTANT: must be of type 'int16'
     # wavfile.write('Trumpet_Cleaned_reduced.wav', sampleRate, reducedCleanAudio)
 

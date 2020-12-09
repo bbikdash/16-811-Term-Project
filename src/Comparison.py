@@ -60,6 +60,8 @@ class Comparison:
         fig.suptitle(title)
         axs[0].plot(xf, hist_left, color=color)
         axs[0].grid()
+        # axs[0].setTitle('')
+        
         axs[1].plot(xf, hist_right, color=color)
         axs[1].grid()
         plt.xlabel("Frequency")
@@ -90,7 +92,7 @@ class Comparison:
         peak value of this range in both cleanedAudio and originalAudio in order to form a scaling
         ratio such that when cleanedAudio is multiplied by this ratio it will be of approximately the
         same magnitude as originalAudio.
-        TODO: currently only does this for the left channel.
+        Currently only does this for the left channel.
         :param cleanedAudio:  The reconstructed audio matrix  of size (n,2).
         :param originalAudio: The original audio that corresponds to the cleanedAudio. Size (n,2).
         :param clippedRegLeft: The list of clipped regions of the left channel of cleanedAudio.
@@ -137,7 +139,7 @@ class Comparison:
         timestamped in clippedRegLeft to the same timestamp in originalAudio by first scaling the cleanedAudio portion
         to be the same maximum magnitude as originalAudio, and then takes the absolute difference. Averages the
         max interpolation errors over the number of clipped regions (length of clippedRegLeft and/or clippedRegRight).
-        TODO: Currently only does this for the left channel.
+        Currently only does this for the left channel.
         :param cleanedAudio:  The reconstructed audio matrix  of size (n,2).
         :param originalAudio: The original audio that corresponds to the cleanedAudio. Size (n,2).
         :param clippedRegLeft: The list of clipped regions of the left channel of cleanedAudio.
@@ -172,6 +174,15 @@ class Comparison:
             # i += 1
 
         avg_max_error = avg_max_error / N
-
+        # TODO: Convert avg max error to decibel
         return avg_max_error
+
+
+def percentDistorted(regions):
+    # TODO
+    total = 0
+    for r in regions:
+        r += r[1] - r[0]
+    return total
+
 
