@@ -60,7 +60,7 @@ def interpolate(regions, red, numpoints=6):
     return data
 
 
-def reconstruct(original_filename, distorted_filename):
+def reconstructAndCompare(original_filename, distorted_filename):
     """
     For all two channel matrices, we will adopt the convention:
         - left channel: audio[:,0]
@@ -137,6 +137,39 @@ def reconstruct(original_filename, distorted_filename):
 
     return cleanedAudio, sr
 
+def reconstruct(distorted_filename):
+    """
+    For all two channel matrices, we will adopt the convention:
+        - left channel: audio[:,0]
+        - right channel: audio[:,1]
+    """
+    # Essential ------------------------------------------------------------------------------------------
+    # Load the audio as a waveform `y`
+    # Store the sampling rate as `sr
+    sr, distortedAudio = wavfile.read(distorted_filename)
+
+    # Find regions of clipping
+    clippedRegLeft = detectClipping(distortedAudio[:, 0])
+    clippedRegRight = detectClipping(distortedAudio[:, 1])
+
+    perc_dist_left = Comparison.percentDistorted(clippedRegLeft, len(distortedAudio))
+    perc_dist_right = Comparison.percentDistorted(clippedRegRight, len(distortedAudio))
+
+    print('%.2f%% of the left audio channel is distorted.' % perc_dist_left)
+    print('%.2f%% of the right audio channel is distorted.' % perc_dist_right)
+
+    # Perform global amplitude reduction
+    reducedAudio = np.round(distortedAudio * 0.75)
+
+    # Perform cubic spline interpolation for every clipped region
+    cleanedAudio = np.zeros(reducedAudio.shape)
+    cleanedAudio[:, 0] = interpolate(clippedRegLeft, reducedAudio[:, 0])
+    cleanedAudio[:, 1] = interpolate(clippedRegRight, reducedAudio[:, 1])
+
+    cleanedAudio = cleanedAudio.astype('int16')   # Use 16 bit signed int when writing to wav file
+
+    return cleanedAudio, sr
+
 
 def exportAudio(name, sampleRate, cleanedAudio):
     # Produce a new wavfile. IMPORTANT: must be of type 'int16'
@@ -146,5 +179,8 @@ def exportAudio(name, sampleRate, cleanedAudio):
 
 if __name__ == "__main__":
 
-    clean, sr = reconstruct('../test_audio/Trumpet_Original.wav',
-                            '../test_audio/Trumpet_Distorted1.wav')
+    clean, sr = reconstructAndCompare('../test_audio/Vibe_Original.wav',
+                                      '../test_audio/Vibe_Distorted1.wav')
+
+    # clean, sr = reconstruct('../test_audio/Chopin - Sonata No. 2 in B flat minor, Op. 35 [Pogorelich].wav')
+    # exportAudio('../test_audio/Chopin Clean.wav', sr, clean)

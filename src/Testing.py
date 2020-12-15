@@ -20,11 +20,12 @@ files = {'../test_audio/Trumpet_Original.wav':
           '../test_audio/Brahms_Distorted2.wav',
           '../test_audio/Brahms_Distorted3.wav',
           '../test_audio/Brahms_Distorted4.wav'],
-         '../test_audio/_Original.wav':
-         ['../test_audio/_Distorted1.wav',
-          '../test_audio/_Distorted2.wav',
-          '../test_audio/_Distorted3.wav',
-          '../test_audio/_Distorted4.wav']}
+         '../test_audio/Vibe_Original.wav':
+         ['../test_audio/Vibe_Distorted1.wav',
+          '../test_audio/Vibe_Distorted2.wav',
+          '../test_audio/Vibe_Distorted3.wav',
+          '../test_audio/Vibe_Distorted4.wav',
+          '../test_audio/Vibe_Distorted5.wav']}
 
 
 
