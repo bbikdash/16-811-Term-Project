@@ -31,8 +31,14 @@ files = {'../test_audio/Trumpet_Original.wav':
 
 for o in files.keys():
     for d in files[o]:
+        print("===========================================")
+        print("Comparing (clean): {}".format(o))
+        print("with (distorted): {}".format(d))
+        print("---")
 
-        AudioReconstruction.reconstruct(o, d)
+        AudioReconstruction.reconstructAndCompare(o, d, plot=False)
+
+        print("\n\n")
 
 
 

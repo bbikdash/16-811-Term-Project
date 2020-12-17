@@ -16,23 +16,23 @@ from Plotting import Plotting
 # These represent the bounds
 MAX_CLIP = 32767
 MIN_CLIP = -32768
-THRESHOLD = 5900  # originally 3
-CLIP = MAX_CLIP - THRESHOLD
+THRESHOLD = 10  # originally 5900
 SCALE = 0.85
 
-def detectClipping(data):
+def detectClipping(data, thresh):
     clipped_region = []  # List containing clipped regions (start and end indices)
 
     inMiddle = False
     bounds = np.zeros(2, dtype=int)
+    clip = MAX_CLIP - thresh
 
     for i in range(len(data)):
 
-        if abs(data[i]) >= CLIP and inMiddle == False:
+        if abs(data[i]) >= clip and inMiddle == False:
             # ASSERT: Found the start of a clipped region
             bounds[0] = i - 1  # Off by one error found here
             inMiddle = True
-        elif abs(data[i]) < CLIP and inMiddle == True:
+        elif abs(data[i]) < clip and inMiddle == True:
             # ASSERT: Found the end of a clipped region
             bounds[1] = i
             inMiddle = False
@@ -60,7 +60,7 @@ def interpolate(regions, red, numpoints=6):
     return data
 
 
-def reconstructAndCompare(original_filename, distorted_filename):
+def reconstructAndCompare(original_filename, distorted_filename, plot=True):
     """
     For all two channel matrices, we will adopt the convention:
         - left channel: audio[:,0]
@@ -83,25 +83,16 @@ def reconstructAndCompare(original_filename, distorted_filename):
 
     reducedOriginalAudio = np.round(originalAudio * SCALE)
     reducedOriginalAudio_hist = Comparison.freq_hist(reducedOriginalAudio, sr)
-    Comparison.plot_hist(reducedOriginalAudio_hist, sr, "Reduced Original Audio", 'r')
+    if plot:
+        Comparison.plot_hist(reducedOriginalAudio_hist, sr, "Reduced Original Audio", 'r')
     reducedAudio_score = Comparison.hist_intersection(reducedOriginalAudio_hist[:,0], originalAudio_hist[:,0])
     print("Percentage similar (Reduced Audio / Original Audio): {} %".format(round(100 * reducedAudio_score / ref_score, 4)))
 
     distortedAudio_hist = Comparison.freq_hist(distortedAudio, sr)
-    Comparison.plot_hist(distortedAudio_hist, sr, "Distorted Audio", 'g')
+    if plot:
+        Comparison.plot_hist(distortedAudio_hist, sr, "Distorted Audio", 'g')
     distortedAudio_score = Comparison.hist_intersection(distortedAudio_hist[:,0], originalAudio_hist[:,0])
     print("Percentage similar (Distorted Audio / Original Audio): {} %".format(round(100 * distortedAudio_score / ref_score, 4)))
-
-    # Find regions of clipping
-    clippedRegLeft = detectClipping(distortedAudio[:, 0])
-    clippedRegRight = detectClipping(distortedAudio[:, 1])
-
-    perc_dist_left = Comparison.percentDistorted(clippedRegLeft, len(distortedAudio))
-    perc_dist_right = Comparison.percentDistorted(clippedRegRight, len(distortedAudio))
-
-    print('%.2f%% of the left audio channel is distorted.' % perc_dist_left)
-    print('%.2f%% of the right audio channel is distorted.' % perc_dist_right)
-
 
     # Perform global amplitude reduction
     # Reduce by (1-SCALE)%
@@ -109,15 +100,63 @@ def reconstructAndCompare(original_filename, distorted_filename):
 
     # Perform cubic spline interpolation for every clipped region
     cleanedAudio = np.zeros(reducedAudio.shape)
+
+    # thresh_levels = [5, 10, 50, 250, 500]
+    # thresh_levels = [2500, 5000, 8000]
+    # best_score = 0
+    # best_thresh = 0
+    # for thresh in thresh_levels:
+    #     # Find regions of clipping
+    #     clippedRegLeft = detectClipping(distortedAudio[:, 0], thresh)
+    #     clippedRegRight = detectClipping(distortedAudio[:, 1], thresh)
+    #
+    #     # perc_dist_left = Comparison.percentDistorted(clippedRegLeft, len(distortedAudio))
+    #     # perc_dist_right = Comparison.percentDistorted(clippedRegRight, len(distortedAudio))
+    #     #
+    #     # print('%.2f%% of the left audio channel is distorted.' % perc_dist_left)
+    #     # print('%.2f%% of the right audio channel is distorted.' % perc_dist_right)
+    #
+    #     cleanedAudio[:, 0] = interpolate(clippedRegLeft, reducedAudio[:, 0])
+    #     cleanedAudio[:, 1] = interpolate(clippedRegRight, reducedAudio[:, 1])
+    #
+    #     # FFT of the cleaned audio
+    #     cleanedAudio_hist = Comparison.freq_hist(cleanedAudio, sr)
+    #     # Comparison.plot_hist(cleanedAudio_hist, sr, "Cleaned Audio", 'c')
+    #     cleanedAudio_score = Comparison.hist_intersection(cleanedAudio_hist[:,0], originalAudio_hist[:,0])
+    #     # We want the following ratio to be as close to 1.0 as possible:
+    #     curr_score = round(100 * cleanedAudio_score / ref_score, 4)
+    #     print("Current Percentage similar (Cleaned Audio / Original Audio): {} %".format(curr_score))
+    #
+    #     if curr_score > best_score:
+    #         print("New best score found. best_score: {},   curr_score: {}".format(best_score, curr_score))
+    #         best_score = curr_score
+    #         best_thresh = thresh
+    #
+    # print("Best Percentage similar (Cleaned Audio / Original Audio): {} %".format(best_score))
+    # print("Best threshold: {}".format(best_thresh))
+
+    thresh = THRESHOLD
+
+    # Find regions of clipping
+    clippedRegLeft = detectClipping(distortedAudio[:, 0], thresh)
+    clippedRegRight = detectClipping(distortedAudio[:, 1], thresh)
+
+    perc_dist_left = Comparison.percentDistorted(clippedRegLeft, len(distortedAudio))
+    perc_dist_right = Comparison.percentDistorted(clippedRegRight, len(distortedAudio))
+    print('%.2f%% of the left audio channel is distorted.' % perc_dist_left)
+    print('%.2f%% of the right audio channel is distorted.' % perc_dist_right)
+
     cleanedAudio[:, 0] = interpolate(clippedRegLeft, reducedAudio[:, 0])
     cleanedAudio[:, 1] = interpolate(clippedRegRight, reducedAudio[:, 1])
 
     # FFT of the cleaned audio
     cleanedAudio_hist = Comparison.freq_hist(cleanedAudio, sr)
-    Comparison.plot_hist(cleanedAudio_hist, sr, "Cleaned Audio", 'c')
-    cleanedAudio_score = Comparison.hist_intersection(cleanedAudio_hist[:,0], originalAudio_hist[:,0])
+    if plot:
+        Comparison.plot_hist(cleanedAudio_hist, sr, "Cleaned Audio", 'c')
+    cleanedAudio_score = Comparison.hist_intersection(cleanedAudio_hist[:, 0], originalAudio_hist[:, 0])
     # We want the following ratio to be as close to 1.0 as possible:
-    print("Percentage similar (Cleaned Audio / Original Audio): {} %".format(round(100 * cleanedAudio_score / ref_score, 4)))
+    curr_score = round(100 * cleanedAudio_score / ref_score, 4)
+    print("Percentage similar (Cleaned Audio / Original Audio): {} %".format(curr_score))
 
     # Intelligent Scaling of Cleaned Audio
     reducedCleanAudio = Comparison.intelligent_reduction(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
@@ -125,17 +164,18 @@ def reconstructAndCompare(original_filename, distorted_filename):
 
     # Average max interpolation error
     avg_max_error = Comparison.avg_max_interp_error(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
-    # print("Average max interpolation error: {}".format(avg_max_error))
-    print("Average max interpolation error: {} dB".format(avg_max_error))
+    print("Average max interpolation error (raw): {}".format(avg_max_error))
+    print("Average max interpolation error (dB): {} dB".format(avg_max_error))
 
     # Single Clipped Region for Trumpet Audio -----------------------------------------
     # Plotting.plot_single_region(1598, 1610, distortedAudio, originalAudio, reducedAudio, cleanedAudio, sampleRate, 6)
     # ---------------------------------------------------------------------------------
 
-    Plotting.generalPlot(originalAudio, distortedAudio, sr)
-    Plotting.createSubplot(originalAudio, reducedAudio, reducedCleanAudio, sr)
+    if plot:
+        Plotting.generalPlot(originalAudio, distortedAudio, sr)
+        Plotting.createSubplot(originalAudio, reducedAudio, reducedCleanAudio, sr)
 
-    return cleanedAudio, sr
+    return reducedCleanAudio, sr
 
 def reconstruct(distorted_filename):
     """
@@ -179,8 +219,8 @@ def exportAudio(name, sampleRate, cleanedAudio):
 
 if __name__ == "__main__":
 
-    clean, sr = reconstructAndCompare('../test_audio/Vibe_Original.wav',
-                                      '../test_audio/Vibe_Distorted1.wav')
+    clean, sr = reconstructAndCompare('../test_audio/Trumpet_Original.wav',
+                                      '../test_audio/Trumpet_Distorted1.wav')
 
     # clean, sr = reconstruct('../test_audio/Chopin - Sonata No. 2 in B flat minor, Op. 35 [Pogorelich].wav')
     # exportAudio('../test_audio/Chopin Clean.wav', sr, clean)

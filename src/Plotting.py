@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 
 
 class Plotting:
-    
+    @staticmethod
     def plot_single_region(start, end, distortedAudio,
                            originalAudio, reducedAudio, cleanedAudio,
                            sampleRate, interp_points=6):
@@ -49,9 +49,8 @@ class Plotting:
         plt.xlabel("Time [s]")
         plt.ylabel("Amplitude")
         plt.show()
-        
-        
-        
+
+    @staticmethod
     def generalPlot(originalAudio, distortedAudio, sampleRate):
     
         length = originalAudio.shape[0] / sampleRate
@@ -83,8 +82,8 @@ class Plotting:
         # plt.legend()
         # plt.xlabel("Time [s]")
         # plt.ylabel("Amplitude")
-        
-    
+
+    @staticmethod
     def createSubplot(originalAudio, reducedAudio, reducedCleanAudio, sampleRate):
         # Plots 3 stacked graphs
         length = originalAudio.shape[0] / sampleRate
