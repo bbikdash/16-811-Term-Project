@@ -79,20 +79,27 @@ def reconstructAndCompare(original_filename, distorted_filename, plot=True):
     # Comparing Cleaning Quality through FFT -----------------------------------------------------------
     # FFT histograms
     originalAudio_hist = Comparison.freq_hist(originalAudio, sr)
-    ref_score = Comparison.hist_intersection(originalAudio_hist[:,0], originalAudio_hist[:,0])
+    left_ref_score = Comparison.hist_intersection(originalAudio_hist[:,0], originalAudio_hist[:,0])
+    right_ref_score = Comparison.hist_intersection(originalAudio_hist[:,1], originalAudio_hist[:,1])
 
     reducedOriginalAudio = np.round(originalAudio * SCALE)
     reducedOriginalAudio_hist = Comparison.freq_hist(reducedOriginalAudio, sr)
     if plot:
         Comparison.plot_hist(reducedOriginalAudio_hist, sr, "Reduced Original Audio", 'r')
-    reducedAudio_score = Comparison.hist_intersection(reducedOriginalAudio_hist[:,0], originalAudio_hist[:,0])
-    print("Percentage similar (Reduced Audio / Original Audio): {} %".format(round(100 * reducedAudio_score / ref_score, 4)))
+    left_reduced_Audio_score = Comparison.hist_intersection(reducedOriginalAudio_hist[:,0], originalAudio_hist[:,0])
+    right_reduced_Audio_score = Comparison.hist_intersection(reducedOriginalAudio_hist[:,1], originalAudio_hist[:,1])
+
+    print("Percentage similar (Left Reduced Audio / Left Original Audio): {} %".format(round(100 * left_reduced_Audio_score / left_ref_score, 4)))
+    print("Percentage similar (Right Reduced Audio / Left Original Audio): {} %".format(round(100 * right_reduced_Audio_score / right_ref_score, 4)))
 
     distortedAudio_hist = Comparison.freq_hist(distortedAudio, sr)
     if plot:
         Comparison.plot_hist(distortedAudio_hist, sr, "Distorted Audio", 'g')
-    distortedAudio_score = Comparison.hist_intersection(distortedAudio_hist[:,0], originalAudio_hist[:,0])
-    print("Percentage similar (Distorted Audio / Original Audio): {} %".format(round(100 * distortedAudio_score / ref_score, 4)))
+    left_distorted_Audio_score = Comparison.hist_intersection(distortedAudio_hist[:,0], originalAudio_hist[:,0])
+    right_distorted_Audio_score = Comparison.hist_intersection(distortedAudio_hist[:,1], originalAudio_hist[:,1])
+
+    print("Percentage similar (Left Distorted Audio / Left Original Audio): {} %".format(round(100 * left_distorted_Audio_score / left_ref_score, 4)))
+    print("Percentage similar (Right Distorted Audio / Right Original Audio): {} %".format(round(100 * right_distorted_Audio_score / right_ref_score, 4)))
 
     # Perform global amplitude reduction
     # Reduce by (1-SCALE)%
@@ -153,10 +160,15 @@ def reconstructAndCompare(original_filename, distorted_filename, plot=True):
     cleanedAudio_hist = Comparison.freq_hist(cleanedAudio, sr)
     if plot:
         Comparison.plot_hist(cleanedAudio_hist, sr, "Cleaned Audio", 'c')
-    cleanedAudio_score = Comparison.hist_intersection(cleanedAudio_hist[:, 0], originalAudio_hist[:, 0])
+    left_cleaned_Audio_score = Comparison.hist_intersection(cleanedAudio_hist[:, 0], originalAudio_hist[:, 0])
+    right_cleaned_Audio_score = Comparison.hist_intersection(cleanedAudio_hist[:, 1], originalAudio_hist[:, 1])
+
     # We want the following ratio to be as close to 1.0 as possible:
-    curr_score = round(100 * cleanedAudio_score / ref_score, 4)
-    print("Percentage similar (Cleaned Audio / Original Audio): {} %".format(curr_score))
+    left_curr_score = round(100 * left_cleaned_Audio_score / left_ref_score, 4)
+    right_curr_score = round(100 * right_cleaned_Audio_score / right_ref_score, 4)
+
+    print("Percentage similar (Left Cleaned Audio / Left Original Audio): {} %".format(left_curr_score))
+    print("Percentage similar (Right Cleaned Audio / Right Original Audio): {} %".format(right_curr_score))
 
     # Intelligent Scaling of Cleaned Audio
     reducedCleanAudio = Comparison.intelligent_reduction(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
@@ -165,7 +177,7 @@ def reconstructAndCompare(original_filename, distorted_filename, plot=True):
     # Average max interpolation error
     avg_max_error = Comparison.avg_max_interp_error(cleanedAudio, originalAudio, clippedRegLeft, clippedRegRight)
     print("Average max interpolation error (raw): {}".format(avg_max_error))
-    print("Average max interpolation error (dB): {} dB".format(avg_max_error))
+    print("Average max interpolation error (dB): {} dB".format(np.log10(avg_max_error)))
 
     # Single Clipped Region for Trumpet Audio -----------------------------------------
     # Plotting.plot_single_region(1598, 1610, distortedAudio, originalAudio, reducedAudio, cleanedAudio, sampleRate, 6)

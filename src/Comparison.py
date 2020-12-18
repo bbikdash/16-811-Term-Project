@@ -175,7 +175,7 @@ class Comparison:
 
         avg_max_error = avg_max_error / N
         # Convert avg max error to decibel
-        return np.log10(avg_max_error)
+        return avg_max_error
 
     @staticmethod
     def percentDistorted(regions, sizeOfAudio):
